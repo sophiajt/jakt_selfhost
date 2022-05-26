@@ -4,6 +4,12 @@ extern struct StringBuilder {
     function StringBuilder() -> StringBuilder
 }
 
+// FIXME: These should not need explicit "-> bool" return types.
+function is_ascii_alpha(anonymous c: u8) -> bool => (c >= b'a' and c <= b'z') or (c >= b'A' and c <= b'Z')
+function is_ascii_digit(anonymous c: u8) -> bool => (c >= b'0' and c <= b'9')
+function is_ascii_hexdigit(anonymous c: u8) -> bool => (c >= b'0' and c <= b'9') or (c >= b'a' and c <= b'f') or (c >= b'A' and c <= b'F')
+function is_ascii_alphanumeric(anonymous c: u8) -> bool => is_ascii_alpha(c) or is_ascii_digit(c)
+
 struct JaktSpan {
     start: usize
     end: usize
@@ -47,10 +53,10 @@ struct Lexer {
         if $index >= $input.size() {
             return Token::None()
         }
-        if $input[$index] >= b'0' and $input[$index] <= b'9' {
+        if is_ascii_digit($input[$index]) {
             let mutable total = 0i64
 
-            while $index < $input.size() and $input[$index] >= b'0' and $input[$index] <= b'9' {
+            while $index < $input.size() and is_ascii_digit($input[$index]) {
                 let value = $input[$index]
                 ++$index
                 let digit: i64 = as_saturated(value - b'0')
@@ -58,15 +64,10 @@ struct Lexer {
             }
             let end = $index
             return Token::Number(num: total, span: JaktSpan(start, end))
-        } else if (($input[$index] >= b'a' and $input[$index] <= b'z') or ($input[$index] >= b'A' and $input[$index] <= b'Z') or $input[$index] == b'_') {
+        } else if is_ascii_alpha($input[$index]) or $input[$index] == b'_' {
             let mutable string_builder = StringBuilder()
 
-            while $index < $input.size() and 
-                (($input[$index] >= b'a' and $input[$index] <= b'z') or 
-                ($input[$index] >= b'A' and $input[$index] <= b'Z') or 
-                ($input[$index] >= b'0' and $input[$index] <= b'9') or 
-                $input[$index] == b'_') {
-                
+            while $index < $input.size() and (is_ascii_alphanumeric($input[$index]) or $input[$index] == b'_') {
                 let value = $input[$index]
                 ++$index
                 string_builder.append(value)
