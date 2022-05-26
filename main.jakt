@@ -83,8 +83,9 @@ struct Lexer {
             return Token::Name(name: string_builder.to_string(), span: JaktSpan(start, end))
         }
 
+        let unknown_char = $input[$index]
         let end = ++$index
-        $errors.push(JaktError(msg: "unknown character", span: JaktSpan(start, end)))
+        $errors.push(JaktError(msg: format("unknown character: {:c}", unknown_char), span: JaktSpan(start, end)))
         return Token::Unknown(JaktSpan(start, end))
     }
 
@@ -159,6 +160,21 @@ struct Lexer {
     }
 }
 
+function print_error(input: [u8], error: JaktError) {
+    println("Error: {}", error.msg)
+    println("------")
+    for index in 0..input.size() {
+        if index >= error.span.start and index < error.span.end {
+            print("\u001b[31m")
+        } else {
+            print("\u001b[0m")
+        }
+        print("{:c}", input[index])
+    }
+    println("------")
+
+}
+
 function main(args: [String]) {
     if args.size() <= 1 {
         eprintln("usage: jakt <path>")
@@ -175,6 +191,6 @@ function main(args: [String]) {
     }
 
     for error in lexer.errors.iterator() {
-        println("error: {}", error)
+        print_error(input, error)
     }
 }
