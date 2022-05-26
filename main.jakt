@@ -88,64 +88,64 @@ struct Lexer {
     errors: [JaktError]
 
     function lex_number_or_name(mutable this) throws -> Token {
-        let start = $index
+        let start = .index
 
-        if $index >= $input.size() {
-            $errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
+        if .index >= .input.size() {
+            .errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
             return Token::Garbage(JaktSpan(start, end: start))
         }
-        if is_ascii_digit($input[$index]) {
+        if is_ascii_digit(.input[.index]) {
             let mutable total = 0i64
 
-            while $index < $input.size() and is_ascii_digit($input[$index]) {
-                let value = $input[$index]
-                ++$index
+            while .index < .input.size() and is_ascii_digit(.input[.index]) {
+                let value = .input[.index]
+                ++.index
                 let digit: i64 = as_saturated(value - b'0')
                 total = total * 10 + digit
             }
-            let end = $index
+            let end = .index
             return Token::Number(number: total, span: JaktSpan(start, end))
-        } else if is_ascii_alpha($input[$index]) or $input[$index] == b'_' {
+        } else if is_ascii_alpha(.input[.index]) or .input[.index] == b'_' {
             let mutable string_builder = StringBuilder()
 
-            while $index < $input.size() and (is_ascii_alphanumeric($input[$index]) or $input[$index] == b'_') {
-                let value = $input[$index]
-                ++$index
+            while .index < .input.size() and (is_ascii_alphanumeric(.input[.index]) or .input[.index] == b'_') {
+                let value = .input[.index]
+                ++.index
                 string_builder.append(value)
             }
-            let end = $index
+            let end = .index
             return Token::Name(name: string_builder.to_string(), span: JaktSpan(start, end))
         }
 
-        let unknown_char = $input[$index]
-        let end = ++$index
-        $errors.push(JaktError(msg: format("unknown character: {:c}", unknown_char), span: JaktSpan(start, end)))
+        let unknown_char = .input[.index]
+        let end = ++.index
+        .errors.push(JaktError(msg: format("unknown character: {:c}", unknown_char), span: JaktSpan(start, end)))
         return Token::Garbage(JaktSpan(start, end))
     }
 
     function lex_quoted_string(mutable this, delimiter: u8) throws  -> Token {
-        let start = $index
+        let start = .index
 
-        ++$index
+        ++.index
 
-        if $index >= $input.size() {
-            $errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
+        if .index >= .input.size() {
+            .errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
             return Token::Garbage(JaktSpan(start, end: start))
         }
 
         let mutable string_builder = StringBuilder()
         
         let mutable escaped = false
-        while $index < $input.size() and $input[$index] != delimiter and escaped == false {
-            if $input[$index] == b'\\' {
+        while .index < .input.size() and .input[.index] != delimiter and escaped == false {
+            if .input[.index] == b'\\' {
                 escaped = true
             } else {
                 escaped = false
             }
-            ++$index
+            ++.index
         }
 
-        let end = $index
+        let end = .index
         
         if delimiter == b'\'' {
             //FIXME: JaktError? can not be assigned 'None'
@@ -156,36 +156,36 @@ struct Lexer {
     }
 
     function next(mutable this) throws  -> Token? {
-        if $index == $input.size() {
+        if .index == .input.size() {
             return None
         }
 
-        while $index < $input.size() and $input[$index] == b' ' {
-            ++$index
+        while .index < .input.size() and .input[.index] == b' ' {
+            ++.index
         }
 
-        let start = $index
+        let start = .index
 
-        let x = match $input[$index] {
-            (b'(') => Token::LParen(JaktSpan(start, end: ++$index))
-            (b')') => Token::RParen(JaktSpan(start, end: ++$index))
-            (b'[') => Token::LSquare(JaktSpan(start, end: ++$index))
-            (b']') => Token::RSquare(JaktSpan(start, end: ++$index))
-            (b'{') => Token::LCurly(JaktSpan(start, end: ++$index))
-            (b'}') => Token::RCurly(JaktSpan(start, end: ++$index))
-            (b'<') => Token::LessThan(JaktSpan(start, end: ++$index))
-            (b'>') => Token::GreaterThan(JaktSpan(start, end: ++$index))
-            (b'.') => Token::Dot(JaktSpan(start, end: ++$index))
-            (b',') => Token::Comma(JaktSpan(start, end: ++$index))
-            (b':') => Token::Colon(JaktSpan(start, end: ++$index))
-            (b'?') => Token::QuestionMark(JaktSpan(start, end: ++$index))
-            (b'+') => Token::Plus(JaktSpan(start, end: ++$index))
-            (b'-') => Token::Minus(JaktSpan(start, end: ++$index))
-            (b'*') => Token::Asterisk(JaktSpan(start, end: ++$index))
-            (b'/') => Token::ForwardSlash(JaktSpan(start, end: ++$index))
-            (b'$') => Token::Dollar(JaktSpan(start, end: ++$index))
-            (b'=') => Token::Equal(JaktSpan(start, end: ++$index))
-            (b'\n') => Token::Eol(JaktSpan(start, end: ++$index))
+        let x = match .input[.index] {
+            (b'(') => Token::LParen(JaktSpan(start, end: ++.index))
+            (b')') => Token::RParen(JaktSpan(start, end: ++.index))
+            (b'[') => Token::LSquare(JaktSpan(start, end: ++.index))
+            (b']') => Token::RSquare(JaktSpan(start, end: ++.index))
+            (b'{') => Token::LCurly(JaktSpan(start, end: ++.index))
+            (b'}') => Token::RCurly(JaktSpan(start, end: ++.index))
+            (b'<') => Token::LessThan(JaktSpan(start, end: ++.index))
+            (b'>') => Token::GreaterThan(JaktSpan(start, end: ++.index))
+            (b'.') => Token::Dot(JaktSpan(start, end: ++.index))
+            (b',') => Token::Comma(JaktSpan(start, end: ++.index))
+            (b':') => Token::Colon(JaktSpan(start, end: ++.index))
+            (b'?') => Token::QuestionMark(JaktSpan(start, end: ++.index))
+            (b'+') => Token::Plus(JaktSpan(start, end: ++.index))
+            (b'-') => Token::Minus(JaktSpan(start, end: ++.index))
+            (b'*') => Token::Asterisk(JaktSpan(start, end: ++.index))
+            (b'/') => Token::ForwardSlash(JaktSpan(start, end: ++.index))
+            (b'$') => Token::Dollar(JaktSpan(start, end: ++.index))
+            (b'=') => Token::Equal(JaktSpan(start, end: ++.index))
+            (b'\n') => Token::Eol(JaktSpan(start, end: ++.index))
             (b'\'') => this.lex_quoted_string(delimiter: b'\'')                
             (b'\"') => this.lex_quoted_string(delimiter: b'"')
             else => this.lex_number_or_name()
