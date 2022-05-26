@@ -1,0 +1,164 @@
+extern struct StringBuilder {
+    function append(mutable this, anonymous s: u8)
+    function to_string(mutable this) -> String
+    function StringBuilder() -> StringBuilder
+}
+
+struct JaktSpan {
+    start: usize
+    end: usize
+}
+
+enum Token {
+    Colon(JaktSpan)
+    Dot(JaktSpan)
+    Comma(JaktSpan)
+    QuestionMark(JaktSpan)
+    LSquare(JaktSpan)
+    RSquare(JaktSpan)
+    LParen(JaktSpan)
+    RParen(JaktSpan)
+    LCurly(JaktSpan)
+    RCurly(JaktSpan)
+    Newline(JaktSpan)
+    LessThan(JaktSpan)
+    GreaterThan(JaktSpan)
+    Plus(JaktSpan)
+    Minus(JaktSpan)
+    Asterisk(JaktSpan)
+    ForwardSlash(JaktSpan)
+    DollarSign(JaktSpan)
+    Equals(JaktSpan)
+    SingleQuote(quote: String, span: JaktSpan)
+    DoubleQuote(quote: String, span: JaktSpan)
+    Number(num: i64, span: JaktSpan)
+    Name(name: String, span: JaktSpan)
+    Unknown(JaktSpan)
+    None
+}
+
+struct Lexer {
+    index: usize
+    input: [u8]
+
+    function lex_number_or_name(mutable this) -> Token {
+        let start = $index
+
+        if $index >= $input.size() {
+            return Token::None()
+        }
+        if $input[$index] >= b'0' and $input[$index] <= b'9' {
+            let mutable total = 0i64
+
+            while $index < $input.size() and $input[$index] >= b'0' and $input[$index] <= b'9' {
+                let value = $input[$index]
+                ++$index
+                let digit: i64 = as_saturated(value - b'0')
+                total = total * 10 + digit
+            }
+            let end = $index
+            return Token::Number(num: total, span: JaktSpan(start, end))
+        } else if (($input[$index] >= b'a' and $input[$index] <= b'z') or ($input[$index] >= b'A' and $input[$index] <= b'Z') or $input[$index] == b'_') {
+            let mutable string_builder = StringBuilder()
+
+            while $index < $input.size() and 
+                (($input[$index] >= b'a' and $input[$index] <= b'z') or 
+                ($input[$index] >= b'A' and $input[$index] <= b'Z') or 
+                ($input[$index] >= b'0' and $input[$index] <= b'9') or 
+                $input[$index] == b'_') {
+                
+                let value = $input[$index]
+                ++$index
+                string_builder.append(value)
+            }
+            let end = $index
+            return Token::Name(name: string_builder.to_string(), span: JaktSpan(start, end))
+        }
+        
+        return Token::Unknown(JaktSpan(start, end: ++$index))
+    }
+
+    function lex_quoted_string(mutable this, delimiter: u8) -> Token {
+        let start = $index
+
+        ++$index
+
+        if $index >= $input.size() {
+            return Token::None()
+        }
+
+        let mutable string_builder = StringBuilder()
+        
+        let mutable escaped = false
+        while $index < $input.size() and $input[$index] != delimiter and escaped == false {
+            if $input[$index] == b'\\' {
+                escaped = true
+            } else {
+                escaped = false
+            }
+            ++$index
+        }
+
+        let end = $index
+        
+        if delimiter == b'\'' {
+            return Token::SingleQuote(quote: string_builder.to_string(), span: JaktSpan(start, end))
+        }
+
+        return Token::DoubleQuote(quote: string_builder.to_string(), span: JaktSpan(start, end))
+    }
+
+    function next(mutable this) -> Token? {
+        if $index == $input.size() {
+            return None
+        }
+
+        while $index < $input.size() and $input[$index] == b' ' {
+            ++$index
+        }
+
+        let start = $index
+
+        let x = match $input[$index] {
+            (b'(') => Token::LParen(JaktSpan(start, end: ++$index))
+            (b')') => Token::RParen(JaktSpan(start, end: ++$index))
+            (b'[') => Token::LSquare(JaktSpan(start, end: ++$index))
+            (b']') => Token::RSquare(JaktSpan(start, end: ++$index))
+            (b'{') => Token::LCurly(JaktSpan(start, end: ++$index))
+            (b'}') => Token::RCurly(JaktSpan(start, end: ++$index))
+            (b'<') => Token::LessThan(JaktSpan(start, end: ++$index))
+            (b'>') => Token::GreaterThan(JaktSpan(start, end: ++$index))
+            (b'.') => Token::Dot(JaktSpan(start, end: ++$index))
+            (b',') => Token::Comma(JaktSpan(start, end: ++$index))
+            (b':') => Token::Colon(JaktSpan(start, end: ++$index))
+            (b'?') => Token::QuestionMark(JaktSpan(start, end: ++$index))
+            (b'+') => Token::Plus(JaktSpan(start, end: ++$index))
+            (b'-') => Token::Minus(JaktSpan(start, end: ++$index))
+            (b'*') => Token::Asterisk(JaktSpan(start, end: ++$index))
+            (b'/') => Token::ForwardSlash(JaktSpan(start, end: ++$index))
+            (b'$') => Token::DollarSign(JaktSpan(start, end: ++$index))
+            (b'=') => Token::Equals(JaktSpan(start, end: ++$index))
+            (b'\n') => Token::Newline(JaktSpan(start, end: ++$index))
+            (b'\'') => this.lex_quoted_string(delimiter: b'\'')                
+            (b'\"') => this.lex_quoted_string(delimiter: b'"')
+            else => this.lex_number_or_name()
+        }
+        return x
+    }
+}
+
+function main(args: [String]) {
+    if args.size() <= 1 {
+        eprintln("usage: jakt <path>")
+        return 1
+    }
+
+    let mutable file = File::open_for_reading(args[1])
+    let input = file.read_all()
+
+    let mutable lexer = Lexer(index: 0, input)
+    
+    for token in lexer {
+        println("token: {}", token)
+    }
+}

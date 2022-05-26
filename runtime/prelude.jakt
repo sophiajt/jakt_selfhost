@@ -1,0 +1,107 @@
+extern struct String {
+    function number(anonymous number: i64) -> String
+
+    function split(this, anonymous c: c_char) -> [String]
+    function characters(this) -> raw c_char
+    function reverse(this) -> String
+    function to_lowercase(this) -> String
+    function to_uppercase(this) -> String
+    function to_snakecase(this) -> String
+    function to_titlecase(this) -> String
+    function to_int(this) -> i32?
+    function to_uint(this) -> u32?
+    function is_whitespace(this) -> bool
+    function hash(this) -> u32
+    function substring(this, start: usize, length: usize) -> String
+    function repeated(character: c_char, count: usize) -> String
+    function is_empty(this) -> bool
+    function length(this) -> usize
+}
+
+extern struct ArrayIterator<T> {
+    function next(mutable this) -> T?
+}
+
+extern struct Array<T> {
+    function is_empty(this) -> bool
+    function size(this) -> usize
+    function capacity(this) -> usize
+    function ensure_capacity(this, anonymous capacity: usize) throws
+    function add_capacity(this, anonymous capacity: usize) throws
+    function resize(mutable this, anonymous size: usize) throws
+    function push(mutable this, anonymous value: T) throws
+    function pop(mutable this) -> T?
+    function iterator(this) -> ArrayIterator<T>
+}
+
+extern struct Optional<T> {
+    function has_value(this) -> bool
+    function value(this) -> T
+    function value_or(this, anonymous x: T) -> T
+    function Optional<S>(anonymous x: S) -> Optional<S>
+}
+
+extern struct WeakPtr<T> {
+    function has_value(this) -> bool
+    function clear(mutable this)
+}
+
+extern struct DictionaryIterator<K, V> {
+    function next(mutable this) -> (K, V)?
+}
+
+extern struct Dictionary<K, V> {
+    function get(this, anonymous key: K) -> V?
+    function contains(this, anonymous key: K) -> bool
+    function set(mutable this, key: K, value: V) throws
+    function remove(mutable this, anonymous key: K) -> bool
+    function ensure_capacity(mutable this, anonymous capacity: usize) throws
+    function clear(mutable this)
+    function size(this) -> usize
+    function capacity(this) -> usize
+    function keys(this) -> [K]
+    function hash(this) -> u32
+    function Dictionary<A, B>() -> [A:B]
+    function iterator(this) -> DictionaryIterator<K, V>
+}
+
+extern struct SetIterator<T> {
+    function next(mutable this) -> T?
+}
+
+extern struct Set<V> {
+    function contains(this, anonymous value: V) -> bool
+    function add(mutable this, anonymous value: V) throws
+    function remove(mutable this, anonymous value: V) -> bool
+    function ensure_capacity(mutable this, anonymous capacity: usize) throws
+    function clear(mutable this)
+    function size(this) -> usize
+    function capacity(this) -> usize
+    function hash(this) -> u32
+    function Set<A>() -> Set<A>
+    function iterator(this) -> SetIterator<V>
+}
+
+extern struct Tuple {}
+
+extern struct Range<T> {
+    function next(mutable this) -> T?
+}
+
+extern struct Error {
+    function code(this) -> i32
+    function from_errno(anonymous errno: i32) -> Error
+}
+
+extern class File {
+    public function open_for_reading(anonymous path: String) throws -> File
+    public function open_for_writing(anonymous path: String) throws -> File
+
+    public function read(mutable this, anonymous buffer: [u8]) throws -> usize
+    public function write(mutable this, anonymous data: [u8]) throws -> usize
+
+    public function read_all(mutable this) throws -> [u8]
+}
+
+extern function as_saturated<U, T>(anonymous input: T) -> U
+extern function as_truncated<U, T>(anonymous input: T) -> U
