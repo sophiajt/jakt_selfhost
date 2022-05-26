@@ -17,30 +17,64 @@ struct JaktSpan {
 }
 
 enum Token {
+    SingleQuotedString(quote: String, span: JaktSpan)
+    SingleQuotedByteString(quote: String, span: JaktSpan)
+    QuotedString(quote: String, span: JaktSpan)
+    Number(number: i64, span: JaktSpan)
+    Name(name: String, span: JaktSpan)
+    Semicolon(JaktSpan)
     Colon(JaktSpan)
-    Dot(JaktSpan)
-    Comma(JaktSpan)
-    QuestionMark(JaktSpan)
-    LSquare(JaktSpan)
-    RSquare(JaktSpan)
+    ColonColon(JaktSpan)
     LParen(JaktSpan)
     RParen(JaktSpan)
     LCurly(JaktSpan)
     RCurly(JaktSpan)
-    Newline(JaktSpan)
-    LessThan(JaktSpan)
-    GreaterThan(JaktSpan)
+    LSquare(JaktSpan)
+    RSquare(JaktSpan)
+    PercentSign(JaktSpan)
     Plus(JaktSpan)
     Minus(JaktSpan)
+    Equal(JaktSpan)
+    PlusEqual(JaktSpan)
+    PlusPlus(JaktSpan)
+    MinusEqual(JaktSpan)
+    MinusMinus(JaktSpan)
+    AsteriskEqual(JaktSpan)
+    ForwardSlashEqual(JaktSpan)
+    PercentSignEqual(JaktSpan)
+    NotEqual(JaktSpan)
+    DoubleEqual(JaktSpan)
+    GreaterThan(JaktSpan)
+    GreaterThanOrEqual(JaktSpan)
+    LessThan(JaktSpan)
+    LessThanOrEqual(JaktSpan)
+    LeftArithmeticShift(JaktSpan)
+    LeftShift(JaktSpan)
+    LeftShiftEqual(JaktSpan)
+    RightShift(JaktSpan)
+    RightArithmeticShift(JaktSpan)
+    RightShiftEqual(JaktSpan)
     Asterisk(JaktSpan)
+    Ampersand(JaktSpan)
+    AmpersandEqual(JaktSpan)
+    Pipe(JaktSpan)
+    PipeEqual(JaktSpan)
+    Caret(JaktSpan)
+    CaretEqual(JaktSpan)
+    Dollar(JaktSpan)
+    Tilde(JaktSpan)
     ForwardSlash(JaktSpan)
-    DollarSign(JaktSpan)
-    Equals(JaktSpan)
-    SingleQuote(quote: String, span: JaktSpan)
-    DoubleQuote(quote: String, span: JaktSpan)
-    Number(num: i64, span: JaktSpan)
-    Name(name: String, span: JaktSpan)
-    Unknown(JaktSpan)
+    ExclamationPoint(JaktSpan)
+    QuestionMark(JaktSpan)
+    QuestionMarkQuestionMark(JaktSpan)
+    Comma(JaktSpan)
+    Dot(JaktSpan)
+    DotDot(JaktSpan)
+    Eol(JaktSpan)
+    Eof(JaktSpan)
+    FatArrow(JaktSpan)
+    Garbage(JaktSpan)
+    None
 }
 
 struct JaktError {
@@ -58,7 +92,7 @@ struct Lexer {
 
         if $index >= $input.size() {
             $errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
-            return Token::Unknown(JaktSpan(start, end: start))
+            return Token::Garbage(JaktSpan(start, end: start))
         }
         if is_ascii_digit($input[$index]) {
             let mutable total = 0i64
@@ -70,7 +104,7 @@ struct Lexer {
                 total = total * 10 + digit
             }
             let end = $index
-            return Token::Number(num: total, span: JaktSpan(start, end))
+            return Token::Number(number: total, span: JaktSpan(start, end))
         } else if is_ascii_alpha($input[$index]) or $input[$index] == b'_' {
             let mutable string_builder = StringBuilder()
 
@@ -86,7 +120,7 @@ struct Lexer {
         let unknown_char = $input[$index]
         let end = ++$index
         $errors.push(JaktError(msg: format("unknown character: {:c}", unknown_char), span: JaktSpan(start, end)))
-        return Token::Unknown(JaktSpan(start, end))
+        return Token::Garbage(JaktSpan(start, end))
     }
 
     function lex_quoted_string(mutable this, delimiter: u8) throws  -> Token {
@@ -96,7 +130,7 @@ struct Lexer {
 
         if $index >= $input.size() {
             $errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
-            return Token::Unknown(JaktSpan(start, end: start))
+            return Token::Garbage(JaktSpan(start, end: start))
         }
 
         let mutable string_builder = StringBuilder()
@@ -115,10 +149,10 @@ struct Lexer {
         
         if delimiter == b'\'' {
             //FIXME: JaktError? can not be assigned 'None'
-            return Token::SingleQuote(quote: string_builder.to_string(), span: JaktSpan(start, end))
+            return Token::SingleQuotedString(quote: string_builder.to_string(), span: JaktSpan(start, end))
         }
 
-        return Token::DoubleQuote(quote: string_builder.to_string(), span: JaktSpan(start, end))
+        return Token::QuotedString(quote: string_builder.to_string(), span: JaktSpan(start, end))
     }
 
     function next(mutable this) throws  -> Token? {
@@ -149,9 +183,9 @@ struct Lexer {
             (b'-') => Token::Minus(JaktSpan(start, end: ++$index))
             (b'*') => Token::Asterisk(JaktSpan(start, end: ++$index))
             (b'/') => Token::ForwardSlash(JaktSpan(start, end: ++$index))
-            (b'$') => Token::DollarSign(JaktSpan(start, end: ++$index))
-            (b'=') => Token::Equals(JaktSpan(start, end: ++$index))
-            (b'\n') => Token::Newline(JaktSpan(start, end: ++$index))
+            (b'$') => Token::Dollar(JaktSpan(start, end: ++$index))
+            (b'=') => Token::Equal(JaktSpan(start, end: ++$index))
+            (b'\n') => Token::Eol(JaktSpan(start, end: ++$index))
             (b'\'') => this.lex_quoted_string(delimiter: b'\'')                
             (b'\"') => this.lex_quoted_string(delimiter: b'"')
             else => this.lex_number_or_name()
