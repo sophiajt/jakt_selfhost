@@ -10,6 +10,7 @@ function is_ascii_digit(anonymous c: u8) -> bool => (c >= b'0' and c <= b'9')
 function is_ascii_hexdigit(anonymous c: u8) -> bool => (c >= b'0' and c <= b'9') or (c >= b'a' and c <= b'f') or (c >= b'A' and c <= b'F')
 function is_ascii_alphanumeric(anonymous c: u8) -> bool => is_ascii_alpha(c) or is_ascii_digit(c)
 
+//FIXME: Would be nice to name this Span and not have conflict
 struct JaktSpan {
     start: usize
     end: usize
@@ -40,18 +41,24 @@ enum Token {
     Number(num: i64, span: JaktSpan)
     Name(name: String, span: JaktSpan)
     Unknown(JaktSpan)
-    None
+}
+
+struct JaktError {
+    msg: String
+    span: JaktSpan
 }
 
 struct Lexer {
     index: usize
     input: [u8]
+    errors: [JaktError]
 
-    function lex_number_or_name(mutable this) -> Token {
+    function lex_number_or_name(mutable this) throws -> Token {
         let start = $index
 
         if $index >= $input.size() {
-            return Token::None()
+            $errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
+            return Token::Unknown(JaktSpan(start, end: start))
         }
         if is_ascii_digit($input[$index]) {
             let mutable total = 0i64
@@ -75,17 +82,20 @@ struct Lexer {
             let end = $index
             return Token::Name(name: string_builder.to_string(), span: JaktSpan(start, end))
         }
-        
-        return Token::Unknown(JaktSpan(start, end: ++$index))
+
+        let end = ++$index
+        $errors.push(JaktError(msg: "unknown character", span: JaktSpan(start, end)))
+        return Token::Unknown(JaktSpan(start, end))
     }
 
-    function lex_quoted_string(mutable this, delimiter: u8) -> Token {
+    function lex_quoted_string(mutable this, delimiter: u8) throws  -> Token {
         let start = $index
 
         ++$index
 
         if $index >= $input.size() {
-            return Token::None()
+            $errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
+            return Token::Unknown(JaktSpan(start, end: start))
         }
 
         let mutable string_builder = StringBuilder()
@@ -103,13 +113,14 @@ struct Lexer {
         let end = $index
         
         if delimiter == b'\'' {
+            //FIXME: JaktError? can not be assigned 'None'
             return Token::SingleQuote(quote: string_builder.to_string(), span: JaktSpan(start, end))
         }
 
         return Token::DoubleQuote(quote: string_builder.to_string(), span: JaktSpan(start, end))
     }
 
-    function next(mutable this) -> Token? {
+    function next(mutable this) throws  -> Token? {
         if $index == $input.size() {
             return None
         }
@@ -157,9 +168,13 @@ function main(args: [String]) {
     let mutable file = File::open_for_reading(args[1])
     let input = file.read_all()
 
-    let mutable lexer = Lexer(index: 0, input)
+    let mutable lexer = Lexer(index: 0, input, errors: [])
     
     for token in lexer {
         println("token: {}", token)
+    }
+
+    for error in lexer.errors.iterator() {
+        println("error: {}", error)
     }
 }
