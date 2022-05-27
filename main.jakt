@@ -444,20 +444,6 @@ function print_error(file_name: String, file_contents: [u8], error: JaktError) t
     }
 }
 
-// function print_error_simple(input: [u8], msg: String, span: JaktSpan) {
-//     println("Error: {}", msg)
-//     println("------")
-//     for index in 0..input.size() {
-//         if index >= span.start and index < span.end {
-//             print("\u001b[31m")
-//         } else {
-//             print("\u001b[0m")
-//         }
-//         print("{:c}", input[index])
-//     }
-//     println("------")
-// }
-
 enum MessageSeverity {
     Hint
     Error
