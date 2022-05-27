@@ -432,28 +432,140 @@ struct Lexer {
     }
 }
 
-function print_error(input: [u8], error: JaktError) {
+function print_error(file_name: String, file_contents: [u8], error: JaktError) throws {
     match error {
-        JaktError::Message(msg: msg, span: span) => {
-            print_error_simple(input, msg, span)
-        } else => {
-            println("hint errors not yet supported")
+        JaktError::Message(msg: message, span: span) => {
+            display_message_with_span(severity: MessageSeverity::Error(), file_name, file_contents, message, span)
+        }
+        JaktError::MessageWithHint(msg: message, span: span, hint: hint, hint_span: hint_span) => {
+            display_message_with_span(severity: MessageSeverity::Error(), file_name, file_contents, message, span)
+            display_message_with_span(severity: MessageSeverity::Hint(), file_name, file_contents, message: hint, span: hint_span)
         }
     }
 }
 
-function print_error_simple(input: [u8], msg: String, span: JaktSpan) {
-    println("Error: {}", msg)
-    println("------")
-    for index in 0..input.size() {
-        if index >= span.start and index < span.end {
-            print("\u001b[31m")
-        } else {
-            print("\u001b[0m")
-        }
-        print("{:c}", input[index])
+// function print_error_simple(input: [u8], msg: String, span: JaktSpan) {
+//     println("Error: {}", msg)
+//     println("------")
+//     for index in 0..input.size() {
+//         if index >= span.start and index < span.end {
+//             print("\u001b[31m")
+//         } else {
+//             print("\u001b[0m")
+//         }
+//         print("{:c}", input[index])
+//     }
+//     println("------")
+// }
+
+enum MessageSeverity {
+    Hint
+    Error
+}
+
+function severity_name(severity: MessageSeverity) throws -> String {
+    return match severity {
+        MessageSeverity::Hint => "Hint"
+        MessageSeverity::Error => "Error"
     }
-    println("------")
+}
+
+function ansi_color_code(severity: MessageSeverity) throws -> String {
+    return match severity {
+        MessageSeverity::Hint => "94"  // Bright Blue
+        MessageSeverity::Error => "31" // Red
+    }
+}
+
+function display_message_with_span(severity: MessageSeverity, file_name: String, file_contents: [u8], message: String, span: JaktSpan) throws {
+    println("{}: {}", severity_name(severity), message)
+
+    let line_spans = gather_line_spans(file_contents)
+
+    let mutable line_index = 1uz
+    let largest_line_number = line_spans.size()
+
+    let width = format("{}", largest_line_number).length()
+
+    while line_index < line_spans.size() {
+        if span.start >= line_spans[line_index].0 and span.start <= line_spans[line_index].1 {
+            let column_index = span.start - line_spans[line_index].0
+
+            println("----- \u001b[33m{}:{}:{}\u001b[0m", file_name, line_index + 1, column_index + 1)
+
+            if line_index > 0 {
+                print_source_line(severity, file_contents, line_spans[line_index - 1], span, line_index, largest_line_number)
+            }
+
+            print_source_line(severity, file_contents, line_spans[line_index], span, line_index + 1, largest_line_number)
+
+            for x in 0..(span.start - line_spans[line_index].0 + width + 4) {
+                print(" ")
+            }
+
+            println("\u001b[{}m^- {}\u001b[0m", ansi_color_code(severity), message)
+
+            while line_index < line_spans.size() and span.end > line_spans[line_index].0 {
+                ++line_index
+                if line_index >= line_spans.size() {
+                    break
+                }
+
+                print_source_line(severity, file_contents, line_spans[line_index], span, line_index + 1, largest_line_number)
+
+                break
+            }
+        } else {
+            ++line_index
+        }
+
+    }
+    println("\u001b[0m-----")
+}
+
+function print_source_line(anonymous severity: MessageSeverity, anonymous file_contents: [u8], anonymous file_span: (usize, usize), anonymous error_span: JaktSpan, anonymous line_number: usize, anonymous largest_line_number: usize) throws {
+    let mutable index = file_span.0
+
+    let width = format("{}", largest_line_number).length()
+
+    print(" {} | ", line_number)
+
+    while index <= file_span.1 {
+        let mutable c = b' '
+        if index < file_span.1 {
+            c = file_contents[index]
+        } else if error_span.start == error_span.end and index == error_span.start {
+            c = b'_'
+        }
+
+        if (index >= error_span.start and index < error_span.end) or (error_span.start == error_span.end and index == error_span.start) {
+            print("\u001b[{}m{:c}", ansi_color_code(severity), c)
+        } else {
+            print("\u001b[0m{:c}", c)
+        }
+
+        ++index
+    }
+    println("")
+}
+
+function gather_line_spans(anonymous contents: [u8]) throws -> [(usize, usize)] {
+    let mutable idx = 0uz;
+    let mutable output: [(usize, usize)] = [];
+
+    let mutable start = idx;
+    while idx < contents.size() {
+        if contents[idx] == b'\n' {
+            output.push((start, idx));
+            start = idx + 1;
+        }
+        idx += 1;
+    }
+    if start < idx {
+        output.push((start, idx));
+    }
+
+    return output
 }
 
 function main(args: [String]) {
@@ -463,15 +575,15 @@ function main(args: [String]) {
     }
 
     let mutable file = File::open_for_reading(args[1])
-    let input = file.read_all()
+    let file_contents = file.read_all()
 
-    let mutable lexer = Lexer(index: 0, input, errors: [])
+    let mutable lexer = Lexer(index: 0, input: file_contents, errors: [])
     
     for token in lexer {
         println("token: {}", token)
     }
 
     for error in lexer.errors.iterator() {
-        print_error(input, error)
+        print_error(file_name: args[1], file_contents, error)
     }
 }
