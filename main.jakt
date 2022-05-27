@@ -453,19 +453,19 @@ function print_source_line(anonymous severity: MessageSeverity, anonymous file_c
 }
 
 function gather_line_spans(anonymous contents: [u8]) throws -> [(usize, usize)] {
-    let mutable idx = 0uz;
-    let mutable output: [(usize, usize)] = [];
+    let mutable idx = 0uz
+    let mutable output: [(usize, usize)] = []
 
-    let mutable start = idx;
+    let mutable start = idx
     while idx < contents.size() {
         if contents[idx] == b'\n' {
-            output.push((start, idx));
-            start = idx + 1;
+            output.push((start, idx))
+            start = idx + 1
         }
-        idx += 1;
+        idx += 1
     }
     if start < idx {
-        output.push((start, idx));
+        output.push((start, idx))
     }
 
     return output
