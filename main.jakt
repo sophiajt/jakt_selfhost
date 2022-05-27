@@ -586,7 +586,7 @@ ref enum ParsedStatement {
     Defer(ParsedStatement)
     UnsafeBlock(ParsedBlock)
     VarDecl(var: ParsedVarDecl, init: ParsedExpression)
-    If(guard: ParsedExpression, then_block: ParsedBlock, else_block: ParsedBlock)
+    If(guard: ParsedExpression, then_block: ParsedBlock, else_block: ParsedBlock?)
     Block(ParsedBlock)
     Loop(ParsedBlock)
     While(guard: ParsedExpression, block: ParsedBlock)
@@ -635,7 +635,6 @@ ref enum ParsedType {
 }
 
 // Checked Types
-// FIXME: Could not use CheckedBlock? because of codegen bug
 // FIXME: we want a unique type for return_type_id and others, like TypeId
 struct CheckedNamespace {
     name: String
@@ -677,7 +676,7 @@ ref enum CheckedStatement {
     Expression(CheckedExpression)
     Defer(CheckedStatement)
     VarDecl(var: CheckedVarDecl, init: CheckedExpression)
-    If(guard: CheckedExpression, then_block: CheckedBlock, else_block: CheckedBlock)
+    If(guard: CheckedExpression, then_block: CheckedBlock, else_block: CheckedBlock?)
     Block(CheckedBlock)
     Loop(CheckedBlock)
     While(guard: CheckedExpression, block: CheckedBlock)
