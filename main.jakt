@@ -86,24 +86,90 @@ struct Lexer {
     input: [u8]
     errors: [JaktError]
 
+    // Peek at next upcoming character
     function peek(this) -> u8 {
-        if .index >= .input.size() {
+        if this.eof() {
             return 0
         }
         return .input[.index]
     }
 
+    // Peek at upcoming characters, N steps ahead in the stream
+    // FIXME: This could be merged with peek() once we support default arguments
+    function peek_ahead(this, anonymous steps: usize) -> u8 {
+        if .index + steps >= .input.size() {
+            return 0
+        }
+        return .input[.index + steps]
+    }
+
+    function eof(this) -> bool {
+        return .index >= .input.size()
+    }
+
+    function substring(this, start: usize, length: usize) throws -> String {
+        let mutable builder = StringBuilder()
+        for i in start..length {
+            builder.append(.input[i])
+        }
+        return builder.to_string()
+    }
+
+    function lex_character_constant_or_name(mutable this) throws -> Token {
+        if this.peek_ahead(1) != b'\'' {
+            return this.lex_number_or_name()
+        }
+
+        let is_byte = this.peek() == b'b'
+        if is_byte {
+            .index++
+        }
+
+        let start = .index
+        .index++
+
+        let mutable escaped = false;
+
+        while not this.eof() and (escaped or this.peek() != b'\'') {
+            if not escaped and this.peek() == b'\\' {
+                escaped = true
+            } else {
+                escaped = false
+            }
+
+            .index++
+        }
+
+        if this.eof() or this.peek() != b'\'' {
+            .errors.push(JaktError::Message(msg: "expected single quote", span: JaktSpan(start, end: start)))
+        }
+
+        // Everything but the quotes
+        let mutable builder = StringBuilder()
+        builder.append(.input[start + 1])
+        let str = builder.to_string()
+
+        .index++
+
+        let end = .index
+
+        if is_byte {
+            return Token::SingleQuotedByteString(quote: str, span: JaktSpan(start, end))
+        }
+        return Token::SingleQuotedString(quote: str, span: JaktSpan(start, end))
+    }
+
     function lex_number_or_name(mutable this) throws -> Token {
         let start = .index
 
-        if .index >= .input.size() {
+        if this.eof() {
             .errors.push(JaktError::Message(msg: "unexpected eof", span: JaktSpan(start, end: start)))
             return Token::Garbage(JaktSpan(start, end: start))
         }
-        if is_ascii_digit(.input[.index]) {
+        if is_ascii_digit(this.peek()) {
             let mutable total = 0i64
 
-            while .index < .input.size() and is_ascii_digit(.input[.index]) {
+            while is_ascii_digit(this.peek()) {
                 let value = .input[.index]
                 ++.index
                 let digit: i64 = as_saturated(value - b'0')
@@ -111,10 +177,10 @@ struct Lexer {
             }
             let end = .index
             return Token::Number(number: total, span: JaktSpan(start, end))
-        } else if is_ascii_alpha(.input[.index]) or .input[.index] == b'_' {
+        } else if is_ascii_alpha(this.peek()) or this.peek() == b'_' {
             let mutable string_builder = StringBuilder()
 
-            while .index < .input.size() and (is_ascii_alphanumeric(.input[.index]) or .input[.index] == b'_') {
+            while is_ascii_alphanumeric(this.peek()) or this.peek() == b'_' {
                 let value = .input[.index]
                 ++.index
                 string_builder.append(value)
@@ -134,16 +200,14 @@ struct Lexer {
 
         ++.index
 
-        if .index >= .input.size() {
+        if this.eof() {
             .errors.push(JaktError::Message(msg: "unexpected eof", span: JaktSpan(start, end: start)))
             return Token::Garbage(JaktSpan(start, end: start))
         }
 
-        let mutable string_builder = StringBuilder()
-        
         let mutable escaped = false
-        while .index < .input.size() and .input[.index] != delimiter and escaped == false {
-            if .input[.index] == b'\\' {
+        while not this.eof() and (escaped or this.peek() != delimiter) {
+            if not escaped and this.peek() == b'\\' {
                 escaped = true
             } else {
                 escaped = false
@@ -152,13 +216,17 @@ struct Lexer {
         }
 
         let end = .index
+
+        let str = this.substring(start: start + 1, length: .index)
+
+        .index++
         
         if delimiter == b'\'' {
             //FIXME: JaktError? can not be assigned 'None'
-            return Token::SingleQuotedString(quote: string_builder.to_string(), span: JaktSpan(start, end))
+            return Token::SingleQuotedString(quote: str, span: JaktSpan(start, end))
         }
 
-        return Token::QuotedString(quote: string_builder.to_string(), span: JaktSpan(start, end))
+        return Token::QuotedString(quote: str, span: JaktSpan(start, end))
     }
 
     function lex_plus(mutable this) -> Token {
@@ -302,14 +370,15 @@ struct Lexer {
     }
 
     function next(mutable this) throws -> Token? {
-        if .index > .input.size() {
+        if this.eof() {
             return None
-        } else if .index == .input.size() {
+        }
+        if .index == .input.size() {
             ++.index
             return Token::Eof(JaktSpan(start: .index - 1, end: .index - 1))
         }
 
-        while .index < .input.size() and .input[.index] == b' ' {
+        while this.peek() == b' ' {
             ++.index
         }
 
@@ -344,6 +413,8 @@ struct Lexer {
             (b'\n') => Token::Eol(JaktSpan(start, end: ++.index))
             (b'\'') => this.lex_quoted_string(delimiter: b'\'')                
             (b'\"') => this.lex_quoted_string(delimiter: b'"')
+            (b'b') => this.lex_character_constant_or_name()
+            (b'c') => this.lex_character_constant_or_name()
             else => this.lex_number_or_name()
         }
     }
