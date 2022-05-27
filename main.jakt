@@ -155,6 +155,83 @@ struct Lexer {
         return Token::QuotedString(quote: string_builder.to_string(), span: JaktSpan(start, end))
     }
 
+    function lex_plus(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::PlusEqual(JaktSpan(start, end: ++.index))
+                (b'+') => Token::PlusPlus(JaktSpan(start, end: ++.index))
+                else => Token::Plus(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Plus(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_minus(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::MinusEqual(JaktSpan(start, end: ++.index))
+                (b'-') => Token::MinusMinus(JaktSpan(start, end: ++.index))
+                else => Token::Minus(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Minus(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_asterisk(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::AsteriskEqual(JaktSpan(start, end: ++.index))
+                else => Token::Asterisk(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Asterisk(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_forward_slash(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::ForwardSlashEqual(JaktSpan(start, end: ++.index))
+                else => Token::ForwardSlash(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::ForwardSlash(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_dot(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'.') => Token::DotDot(JaktSpan(start, end: ++.index))
+                else => Token::Dot(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Dot(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
     function lex_equals(mutable this) -> Token {
         let start = .index
 
@@ -194,14 +271,14 @@ struct Lexer {
             (b'}') => Token::RCurly(JaktSpan(start, end: ++.index))
             (b'<') => Token::LessThan(JaktSpan(start, end: ++.index))
             (b'>') => Token::GreaterThan(JaktSpan(start, end: ++.index))
-            (b'.') => Token::Dot(JaktSpan(start, end: ++.index))
+            (b'.') => this.lex_dot()
             (b',') => Token::Comma(JaktSpan(start, end: ++.index))
             (b':') => Token::Colon(JaktSpan(start, end: ++.index))
             (b'?') => Token::QuestionMark(JaktSpan(start, end: ++.index))
-            (b'+') => Token::Plus(JaktSpan(start, end: ++.index))
-            (b'-') => Token::Minus(JaktSpan(start, end: ++.index))
-            (b'*') => Token::Asterisk(JaktSpan(start, end: ++.index))
-            (b'/') => Token::ForwardSlash(JaktSpan(start, end: ++.index))
+            (b'+') => this.lex_plus()
+            (b'-') => this.lex_minus()
+            (b'*') => this.lex_asterisk()
+            (b'/') => this.lex_forward_slash()
             (b'$') => Token::Dollar(JaktSpan(start, end: ++.index))
             (b'=') => this.lex_equals()
             (b'\n') => Token::Eol(JaktSpan(start, end: ++.index))
