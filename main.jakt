@@ -86,6 +86,13 @@ struct Lexer {
     input: [u8]
     errors: [JaktError]
 
+    function peek(this) -> u8 {
+        if .index >= .input.size() {
+            return 0
+        }
+        return .input[.index]
+    }
+
     function lex_number_or_name(mutable this) throws -> Token {
         let start = .index
 
@@ -156,231 +163,141 @@ struct Lexer {
 
     function lex_plus(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::PlusEqual(JaktSpan(start, end: ++.index))
-                (b'+') => Token::PlusPlus(JaktSpan(start, end: ++.index))
-                else => Token::Plus(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Plus(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::PlusEqual(JaktSpan(start, end: ++.index))
+            (b'+') => Token::PlusPlus(JaktSpan(start, end: ++.index))
+            else => Token::Plus(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_minus(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::MinusEqual(JaktSpan(start, end: ++.index))
-                (b'-') => Token::MinusMinus(JaktSpan(start, end: ++.index))
-                else => Token::Minus(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Minus(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::MinusEqual(JaktSpan(start, end: ++.index))
+            (b'-') => Token::MinusMinus(JaktSpan(start, end: ++.index))
+            else => Token::Minus(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_asterisk(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::AsteriskEqual(JaktSpan(start, end: ++.index))
-                else => Token::Asterisk(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Asterisk(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::AsteriskEqual(JaktSpan(start, end: ++.index))
+            else => Token::Asterisk(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_forward_slash(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::ForwardSlashEqual(JaktSpan(start, end: ++.index))
-                else => Token::ForwardSlash(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::ForwardSlash(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::ForwardSlashEqual(JaktSpan(start, end: ++.index))
+            else => Token::ForwardSlash(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_caret(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::CaretEqual(JaktSpan(start, end: ++.index))
-                else => Token::Caret(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Caret(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::CaretEqual(JaktSpan(start, end: ++.index))
+            else => Token::Caret(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_pipe(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::PipeEqual(JaktSpan(start, end: ++.index))
-                else => Token::Pipe(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Pipe(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::PipeEqual(JaktSpan(start, end: ++.index))
+            else => Token::Pipe(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_percent_sign(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::PercentSignEqual(JaktSpan(start, end: ++.index))
-                else => Token::PercentSign(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::PercentSign(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::PercentSignEqual(JaktSpan(start, end: ++.index))
+            else => Token::PercentSign(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_exclamation_point(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::NotEqual(JaktSpan(start, end: ++.index))
-                else => Token::ExclamationPoint(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::ExclamationPoint(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::NotEqual(JaktSpan(start, end: ++.index))
+            else => Token::ExclamationPoint(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_ampersand(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::AmpersandEqual(JaktSpan(start, end: ++.index))
-                else => Token::Ampersand(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Ampersand(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::AmpersandEqual(JaktSpan(start, end: ++.index))
+            else => Token::Ampersand(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_less_than(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::LessThanOrEqual(JaktSpan(start, end: ++.index))
-                (b'<') => Token::LeftShift(JaktSpan(start, end: ++.index))
-                else => Token::LessThan(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::LessThan(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::LessThanOrEqual(JaktSpan(start, end: ++.index))
+            (b'<') => Token::LeftShift(JaktSpan(start, end: ++.index))
+            else => Token::LessThan(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_greater_than(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::GreaterThanOrEqual(JaktSpan(start, end: ++.index))
-                (b'>') => Token::RightShift(JaktSpan(start, end: ++.index))
-                else => Token::GreaterThan(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::GreaterThan(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::GreaterThanOrEqual(JaktSpan(start, end: ++.index))
+            (b'>') => Token::RightShift(JaktSpan(start, end: ++.index))
+            else => Token::GreaterThan(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_dot(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'.') => Token::DotDot(JaktSpan(start, end: ++.index))
-                else => Token::Dot(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Dot(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'.') => Token::DotDot(JaktSpan(start, end: ++.index))
+            else => Token::Dot(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_colon(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b':') => Token::ColonColon(JaktSpan(start, end: ++.index))
-                else => Token::Colon(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Colon(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b':') => Token::ColonColon(JaktSpan(start, end: ++.index))
+            else => Token::Colon(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_question_mark(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'?') => Token::QuestionMarkQuestionMark(JaktSpan(start, end: ++.index))
-                else => Token::QuestionMark(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::QuestionMark(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'?') => Token::QuestionMarkQuestionMark(JaktSpan(start, end: ++.index))
+            else => Token::QuestionMark(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
     function lex_equals(mutable this) -> Token {
         let start = .index
-
         ++.index
-
-        if .index < .input.size() {
-            return match .input[.index] {
-                (b'=') => Token::DoubleEqual(JaktSpan(start, end: ++.index))
-                (b'>') => Token::FatArrow(JaktSpan(start, end: ++.index))
-                else => Token::Equal(JaktSpan(start: .index - 1, end: .index))
-            }
-        } else {
-            return Token::Equal(JaktSpan(start: .index - 1, end: .index))
+        return match this.peek() {
+            (b'=') => Token::DoubleEqual(JaktSpan(start, end: ++.index))
+            (b'>') => Token::FatArrow(JaktSpan(start, end: ++.index))
+            else => Token::Equal(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
