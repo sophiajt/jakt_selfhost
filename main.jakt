@@ -542,6 +542,164 @@ function gather_line_spans(file_contents: [u8]) throws -> [(usize, usize)] {
     return output
 }
 
+// Compiler
+struct Project {
+    functions: [CheckedFunction]
+    scopes: [Scope]
+    types: [Type]
+}
+
+struct Scope {
+    functions: [String: (usize, JaktSpan)]
+}
+
+enum Type {
+    Builtin
+}
+
+// Parsed Types
+struct ParsedNamespace {
+    name: String
+    functions: [ParsedFunction]
+}
+
+struct ParsedFunction {
+    name: String
+    params: [ParsedParameter]
+    block: ParsedBlock
+    return_type: ParsedType
+}
+
+struct ParsedParameter {
+    requires_label: bool
+    variable: ParsedVariable
+    is_mutable: bool
+    span: JaktSpan
+}
+
+struct ParsedBlock {
+    stmts: [ParsedStatement]
+}
+
+ref enum ParsedStatement {
+    Expression(ParsedExpression)
+    Defer(ParsedStatement)
+    UnsafeBlock(ParsedBlock)
+    VarDecl(var: ParsedVarDecl, init: ParsedExpression)
+    If(guard: ParsedExpression, then_block: ParsedBlock, else_block: ParsedBlock)
+    Block(ParsedBlock)
+    Loop(ParsedBlock)
+    While(guard: ParsedExpression, block: ParsedBlock)
+    For(name: String, name_span: JaktSpan, range: ParsedExpression, block: ParsedBlock)
+    Break
+    Continue
+    Return(expr: ParsedExpression, span: JaktSpan)
+    Throw(ParsedExpression)
+    Garbage
+}
+
+ref enum ParsedExpression {
+    Boolean(val: bool, span: JaktSpan)
+    QuotedString(val: String, span: JaktSpan)
+    Call(call: ParsedCall, span: JaktSpan)
+    Garbage(JaktSpan)
+}
+
+struct ParsedVarDecl {
+    name: String
+    parsed_type: ParsedType
+    is_mutable: bool
+    span: JaktSpan
+}
+
+struct ParsedVariable {
+    name: String
+    parsed_type: ParsedType
+    is_mutable: bool
+    span: JaktSpan
+}
+
+struct ParsedCall {
+    name: String,
+    args: [(String, ParsedExpression)]
+}
+
+ref enum ParsedType {
+    Name(name: String, span: JaktSpan)
+    Dictionary(key: ParsedType, value: ParsedType, span: JaktSpan)
+    Set(inner: ParsedType, span: JaktSpan)
+    Optional(inner: ParsedType, span: JaktSpan)
+    RawPtr(inner: ParsedType, span: JaktSpan)
+    WeakPtr(inner: ParsedType, span: JaktSpan)
+    Empty
+}
+
+// Checked Types
+// FIXME: Could not use CheckedBlock? because of codegen bug
+// FIXME: we want a unique type for return_type_id and others, like TypeId
+struct CheckedNamespace {
+    name: String
+    scope: usize
+}
+
+struct CheckedFunction {
+    name: String
+    return_type_id: usize  
+    params: [CheckedParameter]
+    block: CheckedBlock
+}
+
+struct CheckedParameter {
+    requires_label: bool
+    variable: CheckedVariable
+}
+
+struct CheckedVariable {
+    name: String
+    var_type_id: usize
+    is_mutable: bool
+    definition_span: JaktSpan
+}
+
+struct CheckedVarDecl {
+    name: String
+    var_type_id: usize
+    is_mutable: bool
+    span: JaktSpan
+}
+
+struct CheckedBlock {
+    statements: [CheckedStatement]
+    definitely_returns: bool
+}
+
+ref enum CheckedStatement {
+    Expression(CheckedExpression)
+    Defer(CheckedStatement)
+    VarDecl(var: CheckedVarDecl, init: CheckedExpression)
+    If(guard: CheckedExpression, then_block: CheckedBlock, else_block: CheckedBlock)
+    Block(CheckedBlock)
+    Loop(CheckedBlock)
+    While(guard: CheckedExpression, block: CheckedBlock)
+    Return(CheckedExpression)
+    Break
+    Continue
+    Throw(CheckedExpression)
+    Garbage
+}
+
+ref enum CheckedExpression {
+    Boolean(val: bool, span: JaktSpan)
+    QuotedString(val: String, span: JaktSpan)
+    Call(call: CheckedCall, span: JaktSpan, type: usize)
+}
+
+struct CheckedCall {
+    name: String,
+    args: [(String, CheckedExpression)]
+    return_type: usize
+}
+
 function main(args: [String]) {
     if args.size() <= 1 {
         eprintln("usage: jakt <path>")
