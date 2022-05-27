@@ -74,12 +74,11 @@ enum Token {
     Eof(JaktSpan)
     FatArrow(JaktSpan)
     Garbage(JaktSpan)
-    None
 }
 
-struct JaktError {
-    msg: String
-    span: JaktSpan
+enum JaktError {
+    Message(msg: String, span: JaktSpan)
+    MessageWithHint(msg: String, span: JaktSpan, hint: String, hint_span: JaktSpan)
 }
 
 struct Lexer {
@@ -91,7 +90,7 @@ struct Lexer {
         let start = .index
 
         if .index >= .input.size() {
-            .errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
+            .errors.push(JaktError::Message(msg: "unexpected eof", span: JaktSpan(start, end: start)))
             return Token::Garbage(JaktSpan(start, end: start))
         }
         if is_ascii_digit(.input[.index]) {
@@ -119,7 +118,7 @@ struct Lexer {
 
         let unknown_char = .input[.index]
         let end = ++.index
-        .errors.push(JaktError(msg: format("unknown character: {:c}", unknown_char), span: JaktSpan(start, end)))
+        .errors.push(JaktError::Message(msg: format("unknown character: {:c}", unknown_char), span: JaktSpan(start, end)))
         return Token::Garbage(JaktSpan(start, end))
     }
 
@@ -129,7 +128,7 @@ struct Lexer {
         ++.index
 
         if .index >= .input.size() {
-            .errors.push(JaktError(msg: "unexpected eof", span: JaktSpan(start, end: start)))
+            .errors.push(JaktError::Message(msg: "unexpected eof", span: JaktSpan(start, end: start)))
             return Token::Garbage(JaktSpan(start, end: start))
         }
 
@@ -217,6 +216,113 @@ struct Lexer {
         }
     }
 
+    function lex_caret(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::CaretEqual(JaktSpan(start, end: ++.index))
+                else => Token::Caret(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Caret(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_pipe(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::PipeEqual(JaktSpan(start, end: ++.index))
+                else => Token::Pipe(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Pipe(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_percent_sign(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::PercentSignEqual(JaktSpan(start, end: ++.index))
+                else => Token::PercentSign(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::PercentSign(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_exclamation_point(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::NotEqual(JaktSpan(start, end: ++.index))
+                else => Token::ExclamationPoint(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::ExclamationPoint(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_ampersand(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::AmpersandEqual(JaktSpan(start, end: ++.index))
+                else => Token::Ampersand(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Ampersand(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_less_than(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::LessThanOrEqual(JaktSpan(start, end: ++.index))
+                (b'<') => Token::LeftShift(JaktSpan(start, end: ++.index))
+                else => Token::LessThan(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::LessThan(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_greater_than(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'=') => Token::GreaterThanOrEqual(JaktSpan(start, end: ++.index))
+                (b'>') => Token::RightShift(JaktSpan(start, end: ++.index))
+                else => Token::GreaterThan(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::GreaterThan(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
     function lex_dot(mutable this) -> Token {
         let start = .index
 
@@ -229,6 +335,36 @@ struct Lexer {
             }
         } else {
             return Token::Dot(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_colon(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b':') => Token::ColonColon(JaktSpan(start, end: ++.index))
+                else => Token::Colon(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::Colon(JaktSpan(start: .index - 1, end: .index))
+        }
+    }
+
+    function lex_question_mark(mutable this) -> Token {
+        let start = .index
+
+        ++.index
+
+        if .index < .input.size() {
+            return match .input[.index] {
+                (b'?') => Token::QuestionMarkQuestionMark(JaktSpan(start, end: ++.index))
+                else => Token::QuestionMark(JaktSpan(start: .index - 1, end: .index))
+            }
+        } else {
+            return Token::QuestionMark(JaktSpan(start: .index - 1, end: .index))
         }
     }
 
@@ -269,16 +405,23 @@ struct Lexer {
             (b']') => Token::RSquare(JaktSpan(start, end: ++.index))
             (b'{') => Token::LCurly(JaktSpan(start, end: ++.index))
             (b'}') => Token::RCurly(JaktSpan(start, end: ++.index))
-            (b'<') => Token::LessThan(JaktSpan(start, end: ++.index))
-            (b'>') => Token::GreaterThan(JaktSpan(start, end: ++.index))
+            (b'<') => this.lex_less_than()
+            (b'>') => this.lex_greater_than()
             (b'.') => this.lex_dot()
             (b',') => Token::Comma(JaktSpan(start, end: ++.index))
-            (b':') => Token::Colon(JaktSpan(start, end: ++.index))
-            (b'?') => Token::QuestionMark(JaktSpan(start, end: ++.index))
+            (b'~') => Token::Tilde(JaktSpan(start, end: ++.index))
+            (b';') => Token::Semicolon(JaktSpan(start, end: ++.index))
+            (b':') => this.lex_colon()
+            (b'?') => this.lex_question_mark()
             (b'+') => this.lex_plus()
             (b'-') => this.lex_minus()
             (b'*') => this.lex_asterisk()
             (b'/') => this.lex_forward_slash()
+            (b'^') => this.lex_caret()
+            (b'|') => this.lex_pipe()
+            (b'%') => this.lex_percent_sign()
+            (b'!') => this.lex_exclamation_point()
+            (b'&') => this.lex_ampersand()
             (b'$') => Token::Dollar(JaktSpan(start, end: ++.index))
             (b'=') => this.lex_equals()
             (b'\n') => Token::Eol(JaktSpan(start, end: ++.index))
@@ -290,10 +433,20 @@ struct Lexer {
 }
 
 function print_error(input: [u8], error: JaktError) {
-    println("Error: {}", error.msg)
+    match error {
+        JaktError::Message(msg: msg, span: span) => {
+            print_error_simple(input, msg, span)
+        } else => {
+            println("hint errors not yet supported")
+        }
+    }
+}
+
+function print_error_simple(input: [u8], msg: String, span: JaktSpan) {
+    println("Error: {}", msg)
     println("------")
     for index in 0..input.size() {
-        if index >= error.span.start and index < error.span.end {
+        if index >= span.start and index < span.end {
             print("\u001b[31m")
         } else {
             print("\u001b[0m")
@@ -301,7 +454,6 @@ function print_error(input: [u8], error: JaktError) {
         print("{:c}", input[index])
     }
     println("------")
-
 }
 
 function main(args: [String]) {
