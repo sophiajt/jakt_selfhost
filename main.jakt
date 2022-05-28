@@ -785,18 +785,27 @@ class Parser {
     public function parse_namespace(mutable this) throws -> ParsedNamespace {
         let mutable parsed_namespace = ParsedNamespace(name: "", functions: [])
 
-        while not this.eof() {
+        let mutable should_break = false
+        while not should_break and not this.eof() {
             match this.current() {
                 Token::Name(name: name, span: span) => {
                     match name {
                         ("function") => {
-                           let function = this.parse_function(FunctionLinkage::Internal(), Visibility::Public())
+                            let function = this.parse_function(FunctionLinkage::Internal(), Visibility::Public())
                             parsed_namespace.functions.push(function)
                         }
                         else => { }
                     }
                 }
-                else => { }
+                Token::Eol => {
+                    // Ignore
+                    .index++
+                }
+                Token::RCurly => {
+                    should_break = true
+                }
+                else => {
+                }
             }
         }
 
@@ -811,8 +820,6 @@ class Parser {
             return_type: ParsedType::Empty(),
             throws: false,
         )
-
-        println("parse_function")
 
         .index++
 
@@ -931,10 +938,64 @@ class Parser {
         return parsed_function
     }
 
-    function parse_block(mutable this) -> ParsedBlock {
-        println("parse_block")
-        let mutable stmts: [ParsedStatement] = []
-        return ParsedBlock(stmts)
+    function parse_block(mutable this) throws -> ParsedBlock {
+        let start = .index
+        let mutable block = ParsedBlock(stmts: [])
+
+        if this.eof() {
+            .errors.push(JaktError::Message(msg: "Incomplete block", span: JaktSpan(start, end: start)))
+            return block
+        }
+
+        this.skip_newlines()
+
+        match this.current() {
+            Token::LCurly => { .index++ }
+            else => { 
+                .errors.push(JaktError::Message(msg: "Expected '{'", span: JaktSpan(start, end: start)))
+            }
+        }
+
+        while not this.eof() {
+            match this.current() {
+                Token::RCurly => {
+                    .index++
+                    return block
+                }
+                Token::Semicolon => {
+                    .index++
+                }
+                Token::Eol => {
+                    .index++
+                }
+                else => {
+                    let stmt = this.parse_statement()
+                    block.stmts.push(stmt)
+                }
+            }
+        }
+
+        .errors.push(JaktError::Message(msg: "Expected complete block", span: JaktSpan(start, end: this.current().span().end)))
+        return block
+    }
+
+    function parse_statement(mutable this) throws -> ParsedStatement {
+        println("parse_statement: {}", this.current())
+        .index++
+        return ParsedStatement::Garbage()
+    }
+
+    function skip_newlines(mutable this) {
+        loop { 
+            let newline = match this.current() {
+                Token::Eol => true
+                else => false
+            }
+            if not newline {
+                break
+            }
+            .index++
+        }
     }
 }
 
