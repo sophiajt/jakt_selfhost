@@ -1,6 +1,6 @@
 extern struct StringBuilder {
     function append(mutable this, anonymous s: u8)
-    function to_string(mutable this) -> String
+    function to_string(mutable this) throws -> String
     function StringBuilder() -> StringBuilder
 }
 
