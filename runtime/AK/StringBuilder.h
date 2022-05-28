@@ -10,15 +10,16 @@
 #include <AK/Forward.h>
 #include <AK/String.h>
 #include <AK/StringView.h>
+#include <AK/Tuple.h>
 #include <Builtins/Array.h>
+#include <Builtins/Dictionary.h>
+#include <Builtins/Set.h>
 #include <stdarg.h>
 
 namespace AK {
 
 class StringBuilder {
 public:
-    using OutputType = String;
-
     explicit StringBuilder();
     ~StringBuilder() = default;
 
@@ -26,10 +27,10 @@ public:
     ErrorOr<void> try_append_code_point(u32);
     ErrorOr<void> try_append(char);
     template<typename... Parameters>
-    ErrorOr<void> try_appendff(CheckedFormatString<Parameters...>&& fmtstr, Parameters const&... parameters)
+    ErrorOr<void> try_appendff(StringView&& fmtstr, Parameters const&... parameters)
     {
         VariadicFormatParams variadic_format_params { parameters... };
-        return vformat(*this, fmtstr.view(), variadic_format_params);
+        return vformat(*this, fmtstr, variadic_format_params);
     }
     ErrorOr<void> try_append(char const*, size_t);
     ErrorOr<void> try_append_escaped_for_json(StringView);
@@ -43,16 +44,13 @@ public:
     void append_escaped_for_json(StringView);
 
     template<typename... Parameters>
-    void appendff(CheckedFormatString<Parameters...>&& fmtstr, Parameters const&... parameters)
+    void appendff(StringView&& fmtstr, Parameters const&... parameters)
     {
         VariadicFormatParams variadic_format_params { parameters... };
-        MUST(vformat(*this, fmtstr.view(), variadic_format_params));
+        MUST(vformat(*this, fmtstr, variadic_format_params));
     }
 
-#ifndef KERNEL
-    [[nodiscard]] String build() const;
-    [[nodiscard]] String to_string() const;
-#endif
+    [[nodiscard]] ErrorOr<String> to_string() const;
 
     [[nodiscard]] StringView string_view() const;
     void clear();
@@ -88,26 +86,85 @@ using AK::StringBuilder;
 namespace AK {
 
 template<typename T>
+void append_value(StringBuilder& string_builder, T const& value)
+{
+    if constexpr (IsSame<String, T>)
+        string_builder.append("\"");
+    string_builder.appendff("{}", value);
+    if constexpr (IsSame<String, T>)
+        string_builder.append("\"");
+}
+
+template<typename T>
 struct Formatter<JaktInternal::Array<T>> : Formatter<StringView> {
     ErrorOr<void> format(FormatBuilder& builder, JaktInternal::Array<T> const& value)
     {
         StringBuilder string_builder;
         string_builder.append("[");
         for (size_t i = 0; i < value.size(); ++i) {
-            if constexpr (IsSame<String, T>) {
-                string_builder.append("\"");
-            }
-            string_builder.appendff("{}", value[i]);
-            if constexpr (IsSame<String, T>) {
-                string_builder.append("\"");
-            }
-
-            if (i != value.size() - 1) {
-                string_builder.append(",");
-            }
+            append_value(string_builder, value[i]);
+            if (i != value.size() - 1)
+                string_builder.append(", ");
         }
         string_builder.append("]");
-        return Formatter<StringView>::format(builder, string_builder.to_string());
+        return Formatter<StringView>::format(builder, TRY(string_builder.to_string()));
+    }
+};
+
+template<typename T>
+struct Formatter<JaktInternal::Set<T>> : Formatter<StringView> {
+    ErrorOr<void> format(FormatBuilder& builder, JaktInternal::Set<T> const& set)
+    {
+        StringBuilder string_builder;
+        string_builder.append("{");
+        auto iter = set.iterator();
+
+        for (size_t i = 0; i < set.size(); ++i) {
+            append_value(string_builder, iter.next().value());
+            if (i != set.size() - 1)
+                string_builder.append(", ");
+        }
+        string_builder.append("}");
+        return Formatter<StringView>::format(builder, TRY(string_builder.to_string()));
+    }
+};
+
+template<typename K, typename V>
+struct Formatter<JaktInternal::Dictionary<K, V>> : Formatter<StringView> {
+    ErrorOr<void> format(FormatBuilder& builder, JaktInternal::Dictionary<K, V> const& dict)
+    {
+        StringBuilder string_builder;
+        string_builder.append("[");
+        auto iter = dict.iterator();
+
+        for (size_t i = 0; i < dict.size(); ++i) {
+            auto item = iter.next().value();
+            append_value(string_builder, item.template get<0>());
+            string_builder.append(": ");
+            append_value(string_builder, item.template get<1>());
+            if (i != dict.size() - 1)
+                string_builder.append(", ");
+        }
+        string_builder.append("]");
+        return Formatter<StringView>::format(builder, TRY(string_builder.to_string()));
+    }
+};
+
+template<typename... Ts>
+struct Formatter<AK::Tuple<Ts...>> : Formatter<StringView> {
+    ErrorOr<void> format(FormatBuilder& builder, AK::Tuple<Ts...> const& tuple)
+    {
+        StringBuilder string_builder;
+        string_builder.append("(");
+        if constexpr (sizeof...(Ts) > 0) {
+            tuple.apply_as_args([&](auto first, auto... args) {
+                append_value(string_builder, first);
+                ((string_builder.append(", "), append_value(string_builder, args)), ...);
+            });
+        }
+
+        string_builder.append(")");
+        return Formatter<StringView>::format(builder, TRY(string_builder.to_string()));
     }
 };
 

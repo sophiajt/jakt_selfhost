@@ -161,6 +161,14 @@ public:
         new (&m_storage) T(forward<Parameters>(parameters)...);
     }
 
+    template<typename Callback>
+    ALWAYS_INLINE Optional<T>& lazy_emplace(Callback callback)
+    {
+        if (!m_has_value)
+            emplace(callback());
+        return *this;
+    }
+
     [[nodiscard]] ALWAYS_INLINE bool has_value() const { return m_has_value; }
 
     [[nodiscard]] ALWAYS_INLINE T& value() &
@@ -205,6 +213,14 @@ public:
 
     template<typename Callback>
     [[nodiscard]] ALWAYS_INLINE T value_or_lazy_evaluated(Callback callback) const
+    {
+        if (m_has_value)
+            return value();
+        return callback();
+    }
+
+    template<typename Callback>
+    [[nodiscard]] ALWAYS_INLINE Optional<T> value_or_lazy_evaluated_optional(Callback callback) const
     {
         if (m_has_value)
             return value();

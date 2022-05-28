@@ -1,13 +1,11 @@
 #pragma once
 
 #include <AK/AllOf.h>
-#include <AK/AnyOf.h>
 #include <AK/Assertions.h>
 #include <AK/Atomic.h>
 #include <AK/BitCast.h>
 #include <AK/CharacterTypes.h>
 #include <AK/Checked.h>
-#include <AK/CheckedFormatString.h>
 #include <AK/Concepts.h>
 #include <AK/Debug.h>
 #include <AK/Error.h>
@@ -18,7 +16,6 @@
 #include <AK/GenericLexer.h>
 #include <AK/HashFunctions.h>
 #include <AK/HashTable.h>
-#include <AK/IterationDecision.h>
 #include <AK/Iterator.h>
 #include <AK/LinearArray.h>
 #include <AK/Memory.h>
@@ -29,7 +26,6 @@
 #include <AK/Platform.h>
 #include <AK/RefCounted.h>
 #include <AK/RefPtr.h>
-#include <AK/ReverseIterator.h>
 #include <AK/ScopeGuard.h>
 #include <AK/Span.h>
 #include <AK/StdLibExtraDetails.h>
@@ -37,7 +33,6 @@
 #include <AK/String.h>
 #include <AK/StringBuilder.h>
 #include <AK/StringHash.h>
-#include <AK/StringImpl.h>
 #include <AK/StringUtils.h>
 #include <AK/StringView.h>
 #include <AK/Traits.h>
@@ -49,7 +44,6 @@
 #include <AK/Types.h>
 #include <AK/UnicodeUtils.h>
 #include <AK/Variant.h>
-#include <AK/Vector.h>
 #include <AK/WeakPtr.h>
 #include <AK/Weakable.h>
 #include <AK/kmalloc.h>
@@ -59,7 +53,6 @@
 #include <AK/GenericLexer.cpp>
 #include <AK/String.cpp>
 #include <AK/StringBuilder.cpp>
-#include <AK/StringImpl.cpp>
 #include <AK/StringUtils.cpp>
 #include <AK/StringView.cpp>
 #include <AK/kmalloc.cpp>
@@ -128,7 +121,7 @@ inline constexpr T checked_add(T value, T other)
     Checked<T> checked = value;
     checked += other;
     if (checked.has_overflow())
-        panic(String::formatted("Overflow in checked addition '{} + {}'", value, other));
+        panic(MUST(String::formatted("Overflow in checked addition '{} + {}'", value, other)));
     return checked.value_unchecked();
 }
 
@@ -138,7 +131,7 @@ inline constexpr T checked_sub(T value, T other)
     Checked<T> checked = value;
     checked -= other;
     if (checked.has_overflow())
-        panic(String::formatted("Overflow in checked subtraction '{} - {}'", value, other));
+        panic(MUST(String::formatted("Overflow in checked subtraction '{} - {}'", value, other)));
     return checked.value_unchecked();
 }
 
@@ -148,7 +141,7 @@ inline constexpr T checked_mul(T value, T other)
     Checked<T> checked = value;
     checked *= other;
     if (checked.has_overflow())
-        panic(String::formatted("Overflow in checked multiplication '{} * {}'", value, other));
+        panic(MUST(String::formatted("Overflow in checked multiplication '{} * {}'", value, other)));
     return checked.value_unchecked();
 }
 
@@ -159,9 +152,9 @@ inline constexpr T checked_div(T value, T other)
     checked /= other;
     if (checked.has_overflow()) {
         if (other == 0)
-            panic(String::formatted("Division by zero in checked division '{} / {}'", value, other));
+            panic(MUST(String::formatted("Division by zero in checked division '{} / {}'", value, other)));
         else
-            panic(String::formatted("Overflow in checked division '{} / {}'", value, other));
+            panic(MUST(String::formatted("Overflow in checked division '{} / {}'", value, other)));
     }
     return checked.value_unchecked();
 }
@@ -173,9 +166,9 @@ inline constexpr T checked_mod(T value, T other)
     checked %= other;
     if (checked.has_overflow()) {
         if (other == 0)
-            panic(String::formatted("Division by zero in checked modulo '{} % {}'", value, other));
+            panic(MUST(String::formatted("Division by zero in checked modulo '{} % {}'", value, other)));
         else
-            panic(String::formatted("Overflow in checked modulo '{} % {}'", value, other));
+            panic(MUST(String::formatted("Overflow in checked modulo '{} % {}'", value, other)));
     }
     return checked.value_unchecked();
 }
@@ -377,7 +370,7 @@ int main(int argc, char** argv)
 {
     Array<String> args;
     for (int i = 0; i < argc; ++i) {
-        MUST(args.push(argv[i]));
+        MUST(args.push(MUST(String::copy(StringView(argv[i])))));
     }
     auto result = JaktInternal::main(move(args));
     if (result.is_error()) {

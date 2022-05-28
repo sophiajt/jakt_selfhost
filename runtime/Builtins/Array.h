@@ -48,6 +48,16 @@ public:
         return {};
     }
 
+    bool contains(T const& value) const
+    {
+        for (size_t i = 0; i < m_size; ++i) {
+            if (Traits<T>::equals(m_elements[i], value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     ErrorOr<void> add_size(size_t size)
     {
         if (Checked<size_t>::addition_would_overflow(m_size, size)) {
@@ -230,6 +240,11 @@ public:
         return m_storage->at(index);
     }
 
+    bool contains(T const& value) const
+    {
+        return m_storage->contains(value);
+    }
+
     T const& operator[](size_t index) const { return at(index); }
     T& operator[](size_t index) { return at(index); }
 
@@ -287,13 +302,6 @@ public:
             TRY(array.push(value));
         }
         return array;
-    }
-
-    Array(Vector<T> const& ak_vector)
-    {
-        MUST(ensure_capacity(ak_vector.size()));
-        for (auto value : ak_vector)
-            MUST(push(move(value)));
     }
 
     T* unsafe_data()
