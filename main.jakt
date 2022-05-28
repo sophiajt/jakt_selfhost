@@ -981,8 +981,65 @@ class Parser {
 
     function parse_statement(mutable this) throws -> ParsedStatement {
         println("parse_statement: {}", this.current())
-        .index++
+        let start = .index
+
+        match this.current() {
+            Token::LCurly => {
+                let block = this.parse_block()
+                return ParsedStatement::Block(block)
+            }
+            else => {
+                let expr = this.parse_expression()
+                return ParsedStatement::Expression(expr)
+            }
+        }
+
         return ParsedStatement::Garbage()
+    }
+
+    function parse_expression(mutable this) throws -> ParsedExpression {
+        let mutable expr_stack: [ParsedExpression] = []
+        let mutable last_prec = 1000000
+
+        let lhs = this.parse_operand()
+        expr_stack.push(lhs)
+
+        return expr_stack[0]
+    }
+
+    function parse_operand(mutable this) throws -> ParsedExpression {
+        let span = this.current().span()
+        this.skip_newlines()
+        match this.current() {
+            Token::Name(name: name) => {
+                .index++
+                let call = this.parse_call()
+                return ParsedExpression::Call(call, span)
+            }
+            else => {
+                println("FIXME: parse_operand")
+            }
+        }
+        return ParsedExpression::Garbage(span)
+    }
+
+    function parse_call(mutable this) throws -> ParsedCall {
+        let mutable call = ParsedCall(
+            name: "",
+            args: [],
+        )
+
+        match this.current() {
+            Token::Name(name: name) => {
+                call.name = name
+                .index++
+            }
+            else => {
+                .errors.push(JaktError::Message(msg: "Expected function call", span: this.current().span()))
+            }
+        }
+
+        return call
     }
 
     function skip_newlines(mutable this) {
