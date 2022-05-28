@@ -16,6 +16,7 @@ struct JaktSpan {
     end: usize
 }
 
+namespace lexer {
 enum Token {
     SingleQuotedString(quote: String, span: JaktSpan)
     SingleQuotedByteString(quote: String, span: JaktSpan)
@@ -430,6 +431,7 @@ function print_error(file_name: String, file_contents: [u8], error: JaktError) t
             display_message_with_span(severity: MessageSeverity::Hint(), file_name, file_contents, message: hint, span: hint_span)
         }
     }
+}
 }
 
 enum MessageSeverity {
