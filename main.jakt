@@ -663,6 +663,7 @@ ref enum ParsedStatement {
 
 ref enum ParsedExpression {
     Boolean(val: bool, span: JaktSpan)
+    NumericConstant(val: i64, span: JaktSpan)
     QuotedString(val: String, span: JaktSpan)
     Call(call: ParsedCall, span: JaktSpan)
     Var(name: String, span: JaktSpan)
@@ -691,6 +692,7 @@ struct ParsedCall {
 
 ref enum ParsedType {
     Name(name: String, span: JaktSpan)
+    Array(inner: ParsedType, span: JaktSpan)
     Dictionary(key: ParsedType, value: ParsedType, span: JaktSpan)
     Set(inner: ParsedType, span: JaktSpan)
     Optional(inner: ParsedType, span: JaktSpan)
@@ -923,7 +925,10 @@ class Parser {
                 .index++
                 match .current() {
                     Token::GreaterThan => {
-                        println("FIXME: Parse return type")
+                        .index++
+                        let start = .current().span().start
+                        return_type = .parse_typename()
+                        return_type_span = JaktSpan(start, end: .index)
                     }
                     else => {
                         .errors.push(JaktError::Message(msg: "Expected ->", span: .current().span()))
@@ -940,8 +945,77 @@ class Parser {
         return parsed_function
     }
 
+    function parse_typename(mutable this) throws -> ParsedType {
+        let mutable parsed_type = .parse_shorthand_type()
+
+        match .current() {
+            Token::Name(name: name) => {
+                if name == "raw" or name == "weak" {
+                    println("FIXME: raw/weak")
+                } else {
+                    let span = .current().span()
+                    .index++
+                    return ParsedType::Name(name, span)
+                }
+            }
+            else => {
+                .errors.push(JaktError::Message(msg: "Expected type name", span: .current().span()))
+            }
+        }
+
+        return parsed_type
+    }
+
+    function parse_shorthand_type(mutable this) throws -> ParsedType {
+        let start = .current().span().start
+        match .current() {
+            Token::LSquare => {
+                // [T] is shorthand for Array<T>
+                // [K:V] is shorthand for Dictionary<K, V>
+                .index++
+                let inner = .parse_typename()
+                match .current() {
+                    Token::RSquare => {
+                        let span = JaktSpan(start, end: .current().span().end)
+                        .index++
+                        return ParsedType::Array(inner, span)
+                    }
+                    Token::Colon => {
+                        let span = JaktSpan(start, end: .current().span().end)
+                        let value = .parse_typename()
+                        return ParsedType::Dictionary(key: inner, value, span)
+                    }
+                    else => {
+                        .errors.push(JaktError::Message(msg: "Expected shorthand type", span: .current().span()))
+                    }
+                }
+            }
+            Token::LCurly => {
+                // {T} is shorthand for Set<T>
+                let inner = .parse_typename()
+                .index++
+
+                match .current() {
+                    Token::RCurly => {
+                        let span = JaktSpan(start, end: .current().span().end)
+                        return ParsedType::Set(inner, span)
+                    }
+                    else => {
+                        .errors.push(JaktError::Message(msg: "Expected '}'", span: .current().span()))
+                    }
+                }
+            }
+            Token::LParen => {
+                // (A, B, C) is shorthand for Tuple<A, B, C>
+                println("FIXME: Implement tuple type shorthand")
+            }
+            else => { }
+        }
+        return ParsedType::Empty()
+    }
+
     function parse_block(mutable this) throws -> ParsedBlock {
-        let start = .index
+        let start = .current().span().start
         let mutable block = ParsedBlock(stmts: [])
 
         if .eof() {
@@ -983,9 +1057,22 @@ class Parser {
 
     function parse_statement(mutable this) throws -> ParsedStatement {
         println("parse_statement: {}", .current())
-        let start = .index
+        let start = .current().span().start
 
         match .current() {
+            Token::Name(name: name) => {
+                match name {
+                    ("return") => {
+                        .index++
+                        let expr = .parse_expression()
+                        let end = .tokens[.index - 1].span().end
+                        return ParsedStatement::Return(expr, span: JaktSpan(start, end))
+                    }
+                    else => {
+                        .errors.push(JaktError::Message(msg: "Unknown keyword", span: JaktSpan(start, end: start)))
+                    }
+                }
+            }
             Token::LCurly => {
                 let block = .parse_block()
                 return ParsedStatement::Block(block)
@@ -1019,6 +1106,10 @@ class Parser {
             Token::QuotedString(quote: quote, span: span) => {
                 .index++
                 return ParsedExpression::QuotedString(val: quote, span)
+            }
+            Token::Number(number: number, span: span) => {
+                .index++
+                return ParsedExpression::NumericConstant(val: number, span)
             }
             Token::Name(name: name) => {
                 if name == "true" {
